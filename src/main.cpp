@@ -9,16 +9,57 @@
 #define TRIGGER_CHECK_PCINT PCINT4
 #define TRIGGER_CHECK_PCMSK PCMSK0 
 
+enum CDStates {
+  WAIT_FOR_INPUT,
+  CS_ENABLE,
+  CS_DISABLE,
+
+  OPEN_DOOR,
+  IS_OPEN_CHARGE,
+  IS_OPEN_WAIT,
+  IS_OPEN_CHECK,
+  
+  CLOSE_DOOR,
+  IS_CLOSED_CHARGE,
+  IS_CLOSED_WAIT,
+  IS_CLOSED_CHECK
+};
+
+CDStates state = WAIT_FOR_INPUT;
+
 #define DELAY_STEP 100
 #define MAX_DELAY 1100
 
-unsigned long delayTime = 250;
+unsigned long delayTime = 5;
+unsigned short speedSet = 0;
 
 ISR(PCINT0_vect) {
   if (bitRead(SYSTEM_IO_PIN, TRIGGER_CHECK_PIN)) {
+
+    switch (speedSet) {
+    case 0:
+      delayTime = 1;
+      break;
+    case 1:
+      delayTime = 5;
+      break;
+    case 2:
+      delayTime = 10;
+      break;
+    case 3:
+      delayTime = 100;
+      break;
+    case 4:
+      delayTime = 500;
+      break;
+    default:
+      speedSet = 0;
+    }
+
+    speedSet = (speedSet + 1) % 5;
     // If IDLE - Open Door + Start timer to shutdown
     // If NOT IDLE - reset timer to shutdown
-    delayTime = (delayTime + DELAY_STEP) % MAX_DELAY;
+    // delayTime = (delayTime + DELAY_STEP) % MAX_DELAY;
   }
 }
 
