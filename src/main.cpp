@@ -1,103 +1,100 @@
 #include <Arduino.h>
-#include <avr/power.h>
-
-#define SYSTEM_IO_PORT PORTA
-#define SYSTEM_IO_PIN PINA
-#define IS_OPEN_LED PA7
-#define IS_CLOSED_LED PA5
-#define TRIGGER_CHECK_PIN PINA4
-#define TRIGGER_CHECK_PCINT PCINT4
-#define TRIGGER_CHECK_PCMSK PCMSK0 
-
-enum CDStates {
-  WAIT_FOR_INPUT,
-  CS_ENABLE,
-  CS_DISABLE,
-
-  OPEN_DOOR,
-  IS_OPEN_CHARGE,
-  IS_OPEN_WAIT,
-  IS_OPEN_CHECK,
+#include "door.h"
+ 
+/*
+  Simple Blink sketch
+  simple-blink.cpp
+  Use for PlatformIO demo
+ 
+  From original Arduino Blink Sketch
+  https://www.arduino.cc/en/Tutorial/Blink
   
-  CLOSE_DOOR,
-  IS_CLOSED_CHARGE,
-  IS_CLOSED_WAIT,
-  IS_CLOSED_CHECK
-};
+  DroneBot Workshop 2021
+  https://dronebotworkshop.com
+*/
+ 
+// Set LED_BUILTIN if undefined or not pin 13
+// #define LED_BUILTIN 13
 
-CDStates state = WAIT_FOR_INPUT;
 
-#define DELAY_STEP 100
-#define MAX_DELAY 1100
+Door door = Door();
 
-unsigned long delayTime = 5;
-unsigned short speedSet = 0;
+void setup()
+{
+  // Initialize LED pin as an output.
+  pinMode(LED_BUILTIN, OUTPUT);
+  door.setup();
+  pinMode(A4, INPUT);
+  pinMode(A5, INPUT);
+  pinMode(A7, INPUT);
+  pinMode(A6, INPUT);
 
-ISR(PCINT0_vect) {
-  if (bitRead(SYSTEM_IO_PIN, TRIGGER_CHECK_PIN)) {
+  Serial.begin( 9600 );
+  while(!Serial);
+}
 
-    switch (speedSet) {
-    case 0:
-      delayTime = 1;
-      break;
-    case 1:
-      delayTime = 5;
-      break;
-    case 2:
-      delayTime = 10;
-      break;
-    case 3:
-      delayTime = 100;
-      break;
-    case 4:
-      delayTime = 500;
-      break;
-    default:
-      speedSet = 0;
+
+char buffer[1024];
+void loop()
+{
+  static int previousOpenDoor = 1;
+  int openDoor = digitalRead(A5);
+  if (previousOpenDoor != openDoor) {
+    previousOpenDoor = openDoor;
+    sprintf(buffer, "Open door value changed: %d", openDoor);
+    Serial.println(buffer);
+
+    if (openDoor == 0) {
+      door.open();
     }
-
-    speedSet = (speedSet + 1) % 5;
-    // If IDLE - Open Door + Start timer to shutdown
-    // If NOT IDLE - reset timer to shutdown
-    // delayTime = (delayTime + DELAY_STEP) % MAX_DELAY;
   }
-}
 
-// the setup routine runs once when you press reset:
-void setup() {
-    clock_prescale_set(clock_div_1);
-    // Set indicator outputs
-    bitSet(DDRA, IS_CLOSED_LED); 
-    bitSet(DDRA, IS_OPEN_LED);
-    bitClear(DDRA, TRIGGER_CHECK_PIN); // Read pulse state
 
-    // Enable interrupts
-    bitSet(GIMSK, PCIE0); // Enable Pin Change interrupts
-    GIFR = B00000000; // Clear state
-    bitSet(TRIGGER_CHECK_PCMSK, TRIGGER_CHECK_PCINT); // Enable pin specific interrupt
-    bitSet(SREG, SREG_I); // Enable interrupts
-}
+  static int previousCloseDoor = 1;
+  int closeDoor = digitalRead(A4);
+  if (previousCloseDoor != closeDoor) {
+    previousCloseDoor = closeDoor;
+    sprintf(buffer, "Close door value changed: %d", closeDoor);
+    Serial.println(buffer);
 
-// the loop routine runs over and over again forever
-void flashLeds(bool isOpen) {
-  if (isOpen) {
-    bitClear(SYSTEM_IO_PORT, IS_OPEN_LED);
-    bitSet(SYSTEM_IO_PORT, IS_CLOSED_LED);
-  } else {
-    bitClear(SYSTEM_IO_PORT, IS_CLOSED_LED);
-    bitSet(SYSTEM_IO_PORT, IS_OPEN_LED);
+    if (closeDoor == 0) {
+      door.close();
+    }
   }
-}
 
-static bool ledsState = true;
+  door.loopHandler();
 
-void loop() {
-  /*
-    2. Implement state machine to check switch status
-    3. Add low power support 
-  */
+  // int openDoor = digitalRead(A6);
+  // if (openDoor == 0) {
+  //   sprintf(buffer, "Open button pushed: %d", openDoor);
+  //   Serial.println(buffer);
+  //   door.open();
+  // }
 
-  flashLeds(ledsState);
-  ledsState = !ledsState;
-  delay(delayTime);
+  // int closeDoor = digitalRead(A7);
+  // if (closeDoor == 0) {
+  //   sprintf(buffer, "Close button pushed: %d", closeDoor);
+  //   Serial.println(buffer);
+  //   door.close();
+  // }
+
+  // door.loopHandler();
+
+  // Set the LED HIGH
+  // digitalWrite(LED_BUILTIN, HIGH);
+ 
+  // // Wait for a second
+  // delay(500);
+ 
+  // digitalWrite(LED_BUILTIN, LOW);
+  
+  // delay(500);
+
+  // digitalWrite(LED_BUILTIN, HIGH);
+  // delay(500);
+  // // Set the LED LOW
+  // digitalWrite(LED_BUILTIN, LOW);
+ 
+  //  // Wait for a second
+  // delay(1000);
 }
