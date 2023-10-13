@@ -15,6 +15,10 @@ void Door::setup() {
 }
 
 void Door::open() {
+    if (doorMovement == Open) {
+        return;
+    }
+
     Serial.println("Open door command");
 
     doorMovement = Opening;
@@ -23,8 +27,11 @@ void Door::open() {
 }
 
 void Door::close() {
-    Serial.println("Close door command");
+    if (doorMovement == Closed) {
+        return;
+    }
 
+    Serial.println("Close door command");
     doorMovement = Closing;
     closeWait = 0;
     digitalWrite(hbridge1, LOW);
